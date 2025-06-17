@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gebeta Ethiopian & Eritrean Restaurant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif; margin: 10px; max-width: 600px; margin-left:auto; margin-right:auto;
+    }
+    header, footer {
+      text-align: center; margin-bottom: 20px;
+    }
+    h1, h2, h3 {
+      color: #7B3F00; /* Ethiopian coffee brown */
+    }
+    button {
+      margin-left: 10px;
+      padding: 3px 8px;
+      cursor: pointer;
+      background-color: #FF8000;
+      border: none;
+      border-radius: 3px;
+      color: white;
+      font-weight: bold;
+    }
+    ul {
+      list-style: none; padding-left: 0;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    input, select, textarea {
+      padding: 5px; margin-top: 5px; margin-bottom: 10px; width: 100%; box-sizing: border-box;
+    }
+    textarea {
+      height: 60px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+    #qrcode {
+      margin: 20px auto;
+      width: 128px;
+      height: 128px;
+    }
+    .editable-menu {
+      background: #f7f7f7;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 30px;
+    }
+    .momo {
+      font-size: 1.2em;
+      color: #007A3D; /* Ethiopian flag green */
+      font-weight: bold;
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1 id="greeting">Welcome to Gebeta</h1>
+  <select id="languageSelector" aria-label="Select Language">
+    <option value="en">English</option>
+    <option value="am">አማርኛ</option>
+    <option value="rw">Kinyarwanda</option>
+  </select>
+</header>
+
+<section class="editable-menu">
+  <h2>Manage Menu (Add or Remove Items)</h2>
+  <input type="text" id="newItemName" placeholder="Dish Name" />
+  <input type="number" id="newItemPrice" placeholder="Price in RWF" min="100" />
+  <button onclick="addMenuItem()">Add Item</button>
+  <ul id="menuItems"></ul>
+</section>
+
+<section class="cart">
+  <h2>Cart</h2>
+  <ul id="cartItems"></ul>
+  <label><input type="checkbox" id="extraInjera" /> Extra Injera (1,500 RWF)</label>
+  <label>Order Type:
+    <select id="orderType">
+      <option value="pickup">Pickup</option>
+      <option value="delivery">Delivery (+1,000 RWF)</option>
+    </select>
+  </label>
+  <label>Delivery Instructions:</label>
+  <textarea id="deliveryInstructions" placeholder="Add notes..."></textarea>
+  <h3 id="total">Total: 0 RWF</h3>
+  <button onclick="checkout()">Place Order</button>
+  <button id="whatsappBtn">Order via WhatsApp</button>
+</section>
+
+<section class="qr">
+  <h2>QR Code</h2>
+  <div id="qrcode"></div>
+</section>
+
+<div class="momo">MoMo Payment Code: <span style="font-size:1.5em;">400796</span> (Esu Business)</div>
+
+<footer>
+  <p>Call/WhatsApp: +250790139543 / +250737826407</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+<script>
+  // Initialize or load menu from localStorage
+  let menu = JSON.parse(localStorage.getItem('gebetaMenu')) || [
+    { name: "Kitfo", price: 11000 },
+    { name: "Shiro", price: 6000 },
+    { name: "Tibs", price: 8000 },
+    { name: "Doro Wot", price: 11000 },
+    { name: "Beyaynetu", price: 7000 },
+    { name: "Gored Gored", price: 11000 },
+    { name: "Firfir", price: 6000 },
+    { name: "Tibs Firfir", price: 7500 },
+    { name: "Gomen Be Siga", price: 7000 },
+    { name: "Key Wot", price: 8000 },
+    { name: "Misir Wot", price: 6000 },
+    { name: "Meat Combo", price: 11000 },
+    { name: "Pasta Be Atkilt", price: 6000 },
+    { name: "Pasta Be Siga", price: 7000 },
+    { name: "Alicha Wot", price: 7000 },
+    { name: "Alicha Menchet", price: 7000 },
+    { name: "Key Menchet", price: 8000 },
+    { name: "Gomen Be Denech", price: 6000 },
+    { name: "Kuanta Firfir", price: 7500 }
+  ];
+
+  let cart = [];
+
+  function saveMenu() {
+    localStorage.setItem('gebetaMenu', JSON.stringify(menu));
+  }
+
+  function updateMenu() {
+    const menuList = document.getElementById("menuItems");
+    menuList.innerHTML = "";
+    menu.forEach((item, index) => {
+      const li = document.createElement("li");
+      li.innerHTML = `${item.name} - ${item.price.toLocaleString()} RWF
+        <button onclick="addToCart(${index})">Add</button>
+        <button onclick="removeMenuItem(${index})" style="background:#d9534f;">Remove</button>`;
+      menuList.appendChild(li);
+    });
+  }
+
+  function addMenuItem() {
+    const nameInput = document.getElementById("newItemName");
+    const priceInput = document.getElementById("newItemPrice");
+    const name = nameInput.value.trim();
+    const price = parseInt(priceInput.value);
+
+    if (!name) {
+      alert("Please enter a dish name.");
+      return;
+    }
+    if (!price || price < 100) {
+      alert("Please enter a valid price (minimum 100 RWF).");
+      return;
+    }
+    menu.push({ name, price });
+    saveMenu();
+    updateMenu();
+    nameInput.value = "";
+    priceInput.value = "";
+  }
+
+  function removeMenuItem(index) {
+    if (confirm(`Remove "${menu[index].name}" from the menu?`)) {
+      menu.splice(index, 1);
+      saveMenu();
+      updateMenu();
+      updateCart(); // In case item in cart was removed
+    }
+  }
+
+  function addToCart(index) {
+    cart.push(menu[index]);
+    updateCart();
+  }
+
+  function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCart();
+  }
+
+  function calculateTotal() {
+    const extraInjera = document.getElementById("extraInjera").checked ? 1500 : 0;
+    const orderType = document.getElementById("orderType").value;
+    const deliveryCharge = orderType === "delivery" ? 1000 : 0;
+
+    let total = cart.reduce((sum, item) => sum + item.price, 0);
+    if (cart.length > 0) {
+      total += 1000; // takeaway box
+      total += extraInjera;
+      total += deliveryCharge;
+    }
+    return total;
+  }
+
+  function updateCart() {
+    const cartList = document.getElementById("cartItems");
+    cartList.innerHTML = "";
+
+    cart.forEach((item, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = `${item.name} - ${item.price.toLocaleString()} RWF 
+        <button onclick="removeFromCart(${i})" style="background:#d9534f;">Remove</button>`;
+      cartList.appendChild(li);
+    });
+
+    document.getElementById("total").innerText = `Total: ${calculateTotal().toLocaleString()} RWF`;
+  }
+
+  function checkout() {
+    const orderType = document.getElementById("orderType").value;
+    const instructions = document.getElementById("deliveryInstructions").value;
+    alert(`Order placed!
+Type: ${orderType}
+Instructions: ${instructions || 'None'}
+Pay on delivery or pickup.`);
+  }
+
+  function sendWhatsAppOrder() {
+    if (cart.length === 0) {
+      alert("Your cart is empty.");
+      return;
+    }
+
+    const phone = "+250790139543";
+    const orderType = document.getElementById("orderType").value;
+    const instructions = document.getElementById("deliveryInstructions").value;
+    const extraInjera = document.getElementById("extraInjera").checked;
+
+    let message = `Order from Gebeta:%0A`;
+
+    const itemCount = {};
+    cart.forEach(item => {
+      itemCount[item.name] = (itemCount[item.name] || 0) + 1;
+    });
+
+    for (let name in itemCount) {
+      message += `- ${name} x${itemCount[name]}%0A`;
+    }
+
+    if (extraInjera) {
+      message += `- Extra Injera x1%0A`;
+    }
+
+    message += `%0ATotal: ${calculateTotal().toLocaleString()} RWF`;
+    message += `%0AType: ${orderType}`;
+    if (instructions.trim() !== "") {
+      message += `%0AInstructions: ${encodeURIComponent(instructions.trim())}`;
+    }
+    message += `%0A📞 Customer will pay on delivery or pickup.`;
+
+    const url = `https://wa.me/${phone.replace("+", "")}?text=${message}`;
+    window.open(url, "_blank");
+  }
+
+  function setLanguage(lang) {
+    const greeting = document.getElementById("greeting");
+    if (lang === "am") {
+      greeting.innerText = "እንኳን ደህና መጣህ";
+    } else if (lang === "rw") {
+      greeting.innerText = "Murakaza neza";
+    } else {
+      greeting.innerText = "Welcome to Gebeta";
+    }
+  }
+
+  // Event Listeners
+  document.getElementById("languageSelector").addEventListener("change", function() {
+    setLanguage(this.value);
+  });
+
+  document.getElementById("extraInjera").addEventListener("change", updateCart);
+  document.getElementById("orderType").addEventListener("change", updateCart);
+
+  document.getElementById("whatsappBtn").addEventListener("click", sendWhatsAppOrder);
+
+  // Generate QR Code
+  new QRCode(document.getElementById("qrcode"), {
+    text: window.location.href,
+    width: 128,
+    height: 128
+  });
+
+  // Initialize UI
+  updateMenu();
+  updateCart();
+  setLanguage('en');
+</script>
+
+</body>
+</html>
